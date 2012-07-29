@@ -734,17 +734,22 @@ class PriorityQueue(Queue):
     Also supports dict-like lookup."""
     def __init__(self, order=min, f=lambda x: x):
         update(self, A=[], order=order, f=f)
+        self.membership = {}
     def append(self, item):
         bisect.insort(self.A, (self.f(item), item))
+        hashval = hash(item)
+        self.membership[hashval] = self.membership.get(hashval, 0) + 1
     def __len__(self):
         return len(self.A)
     def pop(self):
         if self.order == min:
-            return self.A.pop(0)[1]
+            item = self.A.pop(0)[1]
         else:
-            return self.A.pop()[1]
+            item = self.A.pop()[1]
+        self._remove_(item)
+        return item
     def __contains__(self, item):
-        return some(lambda (_, x): x == item, self.A)
+        return hash(item) in self.membership
     def __getitem__(self, key):
         for _, item in self.A:
             if item == key:
@@ -752,8 +757,15 @@ class PriorityQueue(Queue):
     def __delitem__(self, key):
         for i, (value, item) in enumerate(self.A):
             if item == key:
-                self.A.pop(i)
+                item = self.A.pop(i)
+                self._remove_(item)
                 return
+    def _remove_(self, item):
+        hashval = hash(item)
+        self.membership[hashval] -= 1
+        if self.membership[hashval] == 0:
+            del self.membership[hashval]
+
 
 ## Fig: The idea is we can define things like Fig[3,10] later.
 ## Alas, it is Fig[3,10] not Fig[3.10], because that would be the same
@@ -858,8 +870,9 @@ calculating gnp ...
 ...     result = []
 ...     for i in range(len(q)):
 ...         num = q.pop()
-...         assert num not in q
+...         assert num not in q		# num could appear multiple times, in which case this would fail
 ...         result.append(num)
+...
 ...     return result
 
 >>> qtest(Stack())
