@@ -855,7 +855,13 @@ calculating gnp ...
 ...     q.extend(nums)
 ...     for num in nums: assert num in q
 ...     assert 42 not in q
-...     return [q.pop() for i in range(len(q))]
+...     result = []
+...     for i in range(len(q)):
+...         num = q.pop()
+...         assert num not in q
+...         result.append(num)
+...     return result
+
 >>> qtest(Stack())
 [0, 3, 4, 99, -99, 6, 5, 7, 2, 8, 1]
 
