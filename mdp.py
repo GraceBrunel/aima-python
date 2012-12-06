@@ -98,7 +98,8 @@ def value_iteration(mdp, epsilon=0.001):
             U1[s] = R(s) + gamma * max([sum([p * U[s1] for (p, s1) in T(s, a)])
                                         for a in mdp.actions(s)])
             delta = max(delta, abs(U1[s] - U[s]))
-        if delta < epsilon * (1 - gamma) / gamma:
+        if (((gamma < 1) and (delta < epsilon * (1 - gamma) / gamma)) or
+            ((gamma == 1) and (delta < epsilon))): # allows for gamma to be 1
              return U
 
 def best_policy(mdp, U):
