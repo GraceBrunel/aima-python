@@ -1,53 +1,43 @@
 from mdp import GridMDP, MDP, value_iteration, policy_evaluation, Fig
-from utils import turn_left, turn_right, update
+from utils import update
 from random import random
 from time import time
+import agents
 
-class MyMDP(MDP):
-    """ Extends MDP class to use a dictionary transistion model """
-    def __init__(self, mdp):
-        MDP.__init__(self,
-                     mdp.init,
-                     mdp.actlist,
-                     mdp.terminals,
-                     mdp.gamma)
-        update(self,
-               P = {},
-               states = mdp.states)
-
-    def R(self, s):
-        """Return a numeric reward for the state s"""
-        if s in self.reward:
-            return self.reward[s]
-        else:
-            # TODO: this should really return zero? or return False beause we
-            # don't know.  Returns 0 for now as it makes the value iteration
-            # function work
-            return 0
-            #raise Exception('tried to get reward of state we dont have yet %s' % str(state))
-
-    def T(self, s, a):
-        """Returns a list of tuples with probabilities for states"""
-        try:
-            return [(p,s) for (s,p) in self.P[s][a].items()]
-        except KeyError:
-            return [] # return an empty list
+class PassiveADPAgent(agents.Agent):
+    """Passive (non-learning) agent that uses adaptive dynamic programming
+    on a given MDP and policy. [Fig. 21.2]"""
+    class LearntMDP:
+        def __init__(self, states, gamma, terminals):
+            update(self, P={}, reward={}, states=states, gamma=gamma, terminals=terminals)
+            
+        def R(self, s):
+            """Return a numeric reward for the state s"""
+            if s in self.reward:
+                return self.reward[s]
+            else:
+                return 0. # we don't know the value of the reward.
+            
+        def T(self, s, a):
+            """Returns a list of tuples with probabilities for states"""
+            try:
+                return [(p,s) for (s,p) in self.P[s][a].items()]
+            except KeyError:
+                return []
+            
+        def T_add(self, (s,a,t), p):
+            " Adds a value to the transistion model "
+            if (s in self.P) and (a in self.P[s]):
+                self.P[s][a][t] = p
+            elif (s in self.P):
+                self.P[s][a] = {t:p}
+            else:
+                self.P[s] = {a:{t:p}}
     
-    def T_add(self, (s,a,t), p):
-        " Adds a value to the transistion model "
-        if (s in self.P) and (a in self.P[s]):
-            self.P[s][a][t] = p
-        elif (s in self.P):
-            self.P[s][a] = {t:p}
-        else:
-            self.P[s] = {a:{t:p}}
-
-class PassiveADPAgent(object):
-
     def __init__(self, action_mdp, pi):
         update(self,
                pi = pi,
-               mdp = MyMDP(action_mdp),
+               mdp = self.LearntMDP(action_mdp.states,action_mdp.gamma,action_mdp.terminals),
                action_mdp = action_mdp,
                U = {},
                Ns_sa = {s:{a:{t:0 for (p,t) in action_mdp.T(s,a)}
@@ -60,7 +50,7 @@ class PassiveADPAgent(object):
         
     def program(self, s1, r1):
         mdp,U,s,a,Nsa,Ns_sa = self.mdp,self.U,self.s,self.a,self.Nsa,self.Ns_sa
-        if s1 not in mdp.reward: # mdp.reward also tracks the visited states
+        if s1 not in mdp.reward: # mdp.R also tracks the visited states
             U[s1] = r1
             mdp.reward[s1] = r1
         if s is not None:
@@ -85,7 +75,7 @@ def simulate(mdp,(s,a)):
             return s1[i]
 
 def execute_trial(agent,mdp):
-    current_state = agent.mdp.init
+    current_state = mdp.init
     while True:
         current_reward = mdp.R(current_state)
         next_action = agent.program(current_state, current_reward)
