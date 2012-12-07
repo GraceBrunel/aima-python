@@ -8,6 +8,7 @@ class PassiveADPAgent(agents.Agent):
     """Passive (non-learning) agent that uses adaptive dynamic programming
     on a given MDP and policy. [Fig. 21.2]"""
     class LearntMDP:
+        """a model of the original mdp that the PassiveADP is trying to learn"""
         def __init__(self, states, gamma, terminals):
             update(self, P={}, reward={}, states=states, gamma=gamma, terminals=terminals)
             
@@ -25,7 +26,7 @@ class PassiveADPAgent(agents.Agent):
             except KeyError:
                 return []
             
-        def T_add(self, (s,a,t), p):
+        def T_set(self, (s,a,t), p):
             " Adds a value to the transistion model "
             if (s in self.P) and (a in self.P[s]):
                 self.P[s][a][t] = p
@@ -58,7 +59,7 @@ class PassiveADPAgent(agents.Agent):
             Ns_sa[s][a][s1] += 1
             for t in Ns_sa[s][a]:
                 if Ns_sa[s][a][t] > 0:
-                    self.mdp.T_add((s,a,t), Ns_sa[s][a][t] / Nsa[s][a])
+                    self.mdp.T_set((s,a,t), Ns_sa[s][a][t] / Nsa[s][a])
         U = policy_evaluation(self.pi, U, mdp)
         if s1 in mdp.terminals:
             self.s, self.a = None, None
@@ -113,6 +114,9 @@ def demoPassiveADPAgent():
                      ('Executed %i trials' % (trials)), ('Utilities: %s' % (agent.U)))
     for result in final_results:
         print result
+
+    print '\nCorrect Utilities (estimated by value iteration, for comparison):'
+    print value_iteration(Fig[17,1])
 
 if __name__ == '__main__':
     demoPassiveADPAgent()
