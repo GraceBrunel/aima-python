@@ -182,6 +182,11 @@ def demoPassiveTDAgent():
     print '\nCorrect Utilities (estimated by value iteration, for comparison):'
     print value_iteration(Fig[17,1])
 
+class QLearningAgent(agents.Agent):
+    """Active TD agent that uses temporal differences to learn an
+    action-utility representation. [Fig. 21.8]"""
+    NotImplemented
+
 if __name__ == '__main__':
     #demoPassiveADPAgent()
     demoPassiveTDAgent()
