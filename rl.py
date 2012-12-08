@@ -88,7 +88,8 @@ class PassiveTDAgent(agents.Agent):
                a = None,
                r = None,
                gamma = mdp.gamma,
-               terminals = mdp.terminals)
+               terminals = mdp.terminals,
+               reached_states = set())
         
         if alpha is None:
             self.alpha = lambda n: 60./(59+n) # page 837
@@ -99,11 +100,13 @@ class PassiveTDAgent(agents.Agent):
         s1, r1 = percept
         pi, U, Ns, s, a, r = self.pi, self.U, self.Ns, self.s, self.a, self.r
         alpha, gamma = self.alpha, self.gamma
-        if s1 not in U: U[s1] = r1
+        if s1 not in self.reached_states:
+            self.reached_states.add(s1)
+            U[s1] = r1
         if s is not None:
             Ns[s] += 1
             U[s] += alpha(Ns[s]) * (r + gamma * U[s1] - U[s])
-        if s in self.terminals:
+        if s1 in self.terminals:
             self.s = self.a = self.r = None
         else:
             self.s, self.a, self.r = s1, pi[s1], r1
