@@ -38,21 +38,21 @@ class PassiveADPAgent(agents.Agent):
             else:
                 self.P[s] = {a:{t:p}}
     
-    def __init__(self, action_mdp, pi):
+    def __init__(self, mdp, pi):
         update(self,
                pi = pi,
-               mdp = self.LearntMDP(action_mdp.states,action_mdp.gamma,action_mdp.terminals),
-               action_mdp = action_mdp,
+               mdp = self.LearntMDP(mdp.states,mdp.gamma,mdp.terminals),
                U = {},
-               Ns_sa = {s:{a:{t:0 for (p,t) in action_mdp.T(s,a)}
-                           for a in action_mdp.actlist}
-                        for s in action_mdp.states},
-               Nsa = {s:{a:0. for a in action_mdp.actlist}
-                      for s in action_mdp.states},
+               Ns_sa = {s:{a:{t:0 for (p,t) in mdp.T(s,a)}
+                           for a in mdp.actlist}
+                        for s in mdp.states},
+               Nsa = {s:{a:0. for a in mdp.actlist}
+                      for s in mdp.states},
                s = None,
                a = None)
         
-    def program(self, s1, r1):
+    def program(self, percept):
+        s1,r1 = percept
         mdp,U,s,a,Nsa,Ns_sa = self.mdp,self.U,self.s,self.a,self.Nsa,self.Ns_sa
         if s1 not in mdp.reward: # mdp.R also tracks the visited states
             U[s1] = r1
@@ -82,7 +82,7 @@ def execute_trial(agent,mdp):
     current_state = mdp.init
     while True:
         current_reward = mdp.R(current_state)
-        next_action = agent.program(current_state, current_reward)
+        next_action = agent.program((current_state, current_reward))
         if next_action == False:
             break
         current_state = simulate(mdp,(current_state, next_action))
@@ -124,7 +124,64 @@ def demoPassiveADPAgent():
 class PassiveTDAgent(agents.Agent):
     """Passive (non-learning) agent that uses temporal differences to learn
     utility estimates. [Fig. 21.4]"""
-    NotImplemented
+    def __init__(self,mdp,pi,alpha=None):
+        update(self,
+               pi = pi,
+               U = {s:0. for s in mdp.states},
+               Ns = {s:0 for s in mdp.states},
+               s = None,
+               a = None,
+               r = None,
+               gamma = mdp.gamma,
+               terminals = mdp.terminals)
+        if alpha is None:
+            alpha = lambda n: 60./(59+n) # page 837
+    def program(self,percept):
+        s1,r1 = percept
+        pi,U,Ns,s,a,r = self.pi,self.U,self.Ns,self.s,self.a,self.r
+        alpha,gamma = self.alpha,self.gamma
+        if s1 not in U: U[s1] = r1
+        if s is not None:
+            Ns[s] += 1
+            U[s] = U[s] + alpha(Ns[s])*(r+gamma*U[s1]-U[s])
+        if s in self.terminals: self.s,self.a,self.r = None,None,None
+        else: self.s,self.a,self.r = s1, pi[s1],r1
+        return self.a
+
+def demoPassiveTDAgent():
+    print 'DEMO PassiveTDAgent'
+    print '--------------------'
+    # Setup values
+    policy = {(0, 1): (0, 1),
+              (1, 2): (1, 0),
+              (3, 2): None,
+              (0, 0): (0, 1),
+              (3, 0): (-1, 0),
+              (3, 1): None,
+              (2, 1): (0, 1),
+              (2, 0): (0, 1),
+              (2, 2): (1, 0),
+              (1, 0): (1, 0),
+              (0, 2): (1, 0)}
+    
+    # Create agent
+    time_start = time()
+    trials = 100
+    agent = PassiveADPAgent(Fig[17,1], policy)
+    for i in range (0,trials):
+        execute_trial(agent,Fig[17,1])
+    time_end = time()
+    
+    seconds_elapsed = time_end - time_start
+    minutes_elapsed = seconds_elapsed / 60.0
+    final_results = (('Took %d seconds, which is %d minutes' % (seconds_elapsed, minutes_elapsed)),\
+                     ('Executed %i trials' % (trials)), ('Utilities: %s' % (agent.U)))
+    for result in final_results:
+        print result
+
+    print '\nCorrect Utilities (estimated by value iteration, for comparison):'
+    print value_iteration(Fig[17,1])
 
 if __name__ == '__main__':
-    demoPassiveADPAgent()
+    #demoPassiveADPAgent()
+    demoPassiveTDAgent()
