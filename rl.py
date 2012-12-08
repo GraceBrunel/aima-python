@@ -6,7 +6,6 @@ from mdp import value_iteration, policy_evaluation, policy_iteration, \
 from utils import update, argmax
 from random import random
 from time import time
-from itertools import product
 import agents
 
 class PassiveADPAgent(agents.Agent):
@@ -15,13 +14,19 @@ class PassiveADPAgent(agents.Agent):
     class LearntMDP:
         """a model of the original mdp that the PassiveADP is trying to learn"""
         def __init__(self, states, gamma, terminals):
-            update(self, P={}, reward={}, states=states, gamma=gamma, terminals=terminals)
+            update(self,
+                   P={},
+                   reward={},
+                   states=states,
+                   gamma=gamma,
+                   terminals=terminals)
             
         def R(self, s):
             """Return a numeric reward for the state s"""
             if s in self.reward:
                 return self.reward[s]
             else:
+                # not specified in AIMA(3rd ed)
                 return 0. # we don't know the value of the reward.
             
         def T(self, s, a):
@@ -57,21 +62,19 @@ class PassiveADPAgent(agents.Agent):
         s1,r1 = percept
         mdp,U,s,a,Nsa,Ns_sa = self.mdp,self.U,self.s,self.a,self.Nsa,self.Ns_sa
         if s1 not in mdp.reward: # mdp.R also tracks the visited states
-            U[s1] = r1
-            mdp.reward[s1] = r1
+            U[s1] = mdp.reward[s1] = r1
         if s is not None:
             Nsa[s][a] += 1
             Ns_sa[s][a][s1] += 1
             for t in Ns_sa[s][a]:
                 if Ns_sa[s][a][t] > 0:
-                    self.mdp.T_set((s,a,t), Ns_sa[s][a][t] / Nsa[s][a])
+                    self.mdp.T_set((s,a,t), Ns_sa[s][a][t]/Nsa[s][a])
         U = policy_evaluation(self.pi, U, mdp)
         if s1 in mdp.terminals:
-            self.s, self.a = None, None
-            return False
+            self.s = self.a = None
         else:
             self.s, self.a = s1, self.pi[s1]
-            return self.a
+        return self.a
 
 class PassiveTDAgent(agents.Agent):
     """Passive (non-learning) agent that uses temporal differences to learn
@@ -86,20 +89,24 @@ class PassiveTDAgent(agents.Agent):
                r = None,
                gamma = mdp.gamma,
                terminals = mdp.terminals)
+        
         if alpha is None:
-            alpha = lambda n: 60./(59+n) # page 837
+            self.alpha = lambda n: 60./(59+n) # page 837
         else:
             self.alpha = alpha
-    def program(self,percept):
-        s1,r1 = percept
-        pi,U,Ns,s,a,r = self.pi,self.U,self.Ns,self.s,self.a,self.r
-        alpha,gamma = self.alpha,self.gamma
+
+    def program(self, percept):
+        s1, r1 = percept
+        pi, U, Ns, s, a, r = self.pi, self.U, self.Ns, self.s, self.a, self.r
+        alpha, gamma = self.alpha, self.gamma
         if s1 not in U: U[s1] = r1
         if s is not None:
             Ns[s] += 1
-            U[s] += alpha(Ns[s])*(r+gamma*U[s1]-U[s])
-        if s in self.terminals: self.s,self.a,self.r = None,None,None
-        else: self.s,self.a,self.r = s1, pi[s1],r1
+            U[s] += alpha(Ns[s]) * (r + gamma * U[s1] - U[s])
+        if s in self.terminals:
+            self.s = self.a = self.r = None
+        else:
+            self.s, self.a, self.r = s1, pi[s1], r1
         return self.a
 
 class QLearningAgent(agents.Agent):
@@ -107,8 +114,8 @@ class QLearningAgent(agents.Agent):
     action-utility representation. [Fig. 21.8]"""
     def __init__(self,mdp,alpha=None,Ne=5,Rplus=2):
         update(self,
-               Q = {s:{a:0. for a in mdp.actlist}
-                    for s in mdp.states if s not in mdp.terminals},
+               Q = {s:{a:0. for a in mdp.actlist} if s not in mdp.terminals
+                    else {None:0.} for s in mdp.states},
                Nsa = {s:{a:0. for a in mdp.actlist}
                     for s in mdp.states},
                s = None,
@@ -118,15 +125,13 @@ class QLearningAgent(agents.Agent):
                Rplus = Rplus,
                gamma = mdp.gamma,
                terminals = mdp.terminals)
-
-        for s in mdp.terminals: self.Q[s] = {None:0.}
         
         if alpha is None:
             self.alpha = lambda n: 60./(59+n) # page 837
         else:
             self.alpha = alpha
             
-    def f(self,u,n): # the exploration function in AIMA(3rd ed), pg 842
+    def f(self,u,n): # exploration function in AIMA(3rd ed), pg 842
         if n < self.Ne:
             return self.Rplus
         else:
@@ -142,16 +147,15 @@ class QLearningAgent(agents.Agent):
             Nsa[s][a] += 1
             Q[s][a] += alpha(Nsa[s][a])*(r+gamma*max(Q[s1].values())-Q[s][a])
         if s1 in self.terminals:
-            self.s,self.a,self.r = None, None, None
-            return False
+            self.s = self.a = self.r = None
         else:
-            self.s,self.r = s1,r1
-            self.a = argmax(Q[s1].keys(),lambda a1: f(Q[s1][a1],Nsa[s1][a1]))
-            return self.a
+            self.s, self.r = s1, r1
+            self.a = argmax(Q[s1].keys(), lambda a1: f(Q[s1][a1],Nsa[s1][a1]))
+        return self.a
 
 # ---
 
-def simulate(mdp,(s,a)):
+def simulate_move(mdp,(s,a)):
     r = random() # 0 <= r <= 1
     p,s1 = zip(*(mdp.T(s,a)))
     for i in range(len(p)):
@@ -163,9 +167,9 @@ def execute_trial(agent,mdp):
     while True:
         current_reward = mdp.R(current_state)
         next_action = agent.program((current_state, current_reward))
-        if next_action == False:
+        if next_action == None:
             break
-        current_state = simulate(mdp,(current_state, next_action))
+        current_state = simulate_move(mdp,(current_state, next_action))
 
 def demoPassiveADPAgent():
     print '--------------------'
@@ -219,7 +223,7 @@ def demoPassiveTDAgent():
     
     time_start = time()
     trials = 100
-    agent = PassiveADPAgent(Fig[17,1], policy)
+    agent = PassiveTDAgent(Fig[17,1], policy)
     for i in range (0,trials):
         execute_trial(agent,Fig[17,1])
     time_end = time()
@@ -236,7 +240,7 @@ def demoPassiveTDAgent():
 
 def demoQLearningAgent():
     print '--------------------'
-    print 'DEMO PassiveTDAgent'
+    print 'DEMO QLearningAgent'
     print '--------------------'
     # Setup values
     policy = {(0, 1): (0, 1),
@@ -252,7 +256,7 @@ def demoQLearningAgent():
               (0, 2): (1, 0)}
     
     time_start = time()
-    trials = 1000
+    trials = 100
     agent = QLearningAgent(Fig[17,1])
     for i in range (0,trials):
         execute_trial(agent,Fig[17,1])
@@ -272,6 +276,6 @@ def demoQLearningAgent():
 # ---
 
 if __name__ == '__main__':
-    demoPassiveADPAgent()
+    #demoPassiveADPAgent()
     demoPassiveTDAgent()
-    demoQLearningAgent()
+    #demoQLearningAgent()
