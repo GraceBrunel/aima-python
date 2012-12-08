@@ -197,14 +197,10 @@ def demoPassiveADPAgent():
         execute_trial(agent,Fig[17,1])
     time_end = time()
     
-    seconds_elapsed = time_end - time_start
-    minutes_elapsed = seconds_elapsed / 60.0
-    final_results = (('Took %d seconds, which is %d minutes' % (seconds_elapsed, minutes_elapsed)),\
-                     ('Executed %i trials' % (trials)), ('Utilities: %s' % (agent.U)))
-    for result in final_results:
-        print result
-
-    print '\nCorrect Utilities (estimated by value iteration, for comparison):'
+    print 'Executed %i trials' % trials
+    print 'Took %d seconds' % (time_end - time_start)
+    print 'Utilities: %s' % agent.U
+    print '\nCorrect Utilities (estimated by value iteration):'
     print value_iteration(Fig[17,1])
 
 def demoPassiveTDAgent():
@@ -231,14 +227,10 @@ def demoPassiveTDAgent():
         execute_trial(agent,Fig[17,1])
     time_end = time()
     
-    seconds_elapsed = time_end - time_start
-    minutes_elapsed = seconds_elapsed / 60.0
-    final_results = (('Took %d seconds, which is %d minutes' % (seconds_elapsed, minutes_elapsed)),\
-                     ('Executed %i trials' % (trials)), ('Utilities: %s' % (agent.U)))
-    for result in final_results:
-        print result
-
-    print '\nCorrect Utilities (estimated by value iteration, for comparison):'
+    print 'Executed %i trials' % trials
+    print 'Took %d seconds' % (time_end - time_start)
+    print 'Utilities: %s' % agent.U
+    print '\nCorrect Utilities (estimated by value iteration):'
     print value_iteration(Fig[17,1])
 
 def demoQLearningAgent():
@@ -264,21 +256,16 @@ def demoQLearningAgent():
     for i in range (0,trials):
         execute_trial(agent,Fig[17,1])
     time_end = time()
-    
-    seconds_elapsed = time_end - time_start
-    minutes_elapsed = seconds_elapsed / 60.0
-    final_results = (('Took %d seconds, which is %d minutes' % (seconds_elapsed, minutes_elapsed)),\
-                     ('Executed %i trials' % (trials)),
-                     ('Utilities: %s' % {s:max(agent.Q[s].values()) for s in agent.Q}))
-    for result in final_results:
-        print result
 
-    print '\nCorrect Utilities (estimated by value iteration, for comparison):'
+    print 'Executed %i trials' % trials
+    print 'Took %d seconds' % (time_end - time_start)
+    print 'Utilities: %s' % {s:max(agent.Q[s].values()) for s in agent.Q}
+    print '\nCorrect Utilities (estimated by value iteration):'
     print value_iteration(Fig[17,1])
 
 # ---
 
 if __name__ == '__main__':
-    #demoPassiveADPAgent()
+    demoPassiveADPAgent()
     demoPassiveTDAgent()
-    #demoQLearningAgent()
+    demoQLearningAgent()
