@@ -23,11 +23,7 @@ class PassiveADPAgent(agents.Agent):
             
         def R(self, s):
             """Return a numeric reward for the state s"""
-            if s in self.reward:
-                return self.reward[s]
-            else:
-                # not specified in AIMA(3rd ed)
-                return 0. # we don't know the value of the reward.
+            return self.reward.get(s, 0.)
             
         def T(self, s, a):
             """Returns a list of tuples with probabilities for states"""
@@ -91,10 +87,10 @@ class PassiveTDAgent(agents.Agent):
                terminals = mdp.terminals,
                reached_states = set())
         
-        if alpha is None:
-            self.alpha = lambda n: 60./(59+n) # page 837
-        else:
+        if alpha:
             self.alpha = alpha
+        else:
+            self.alpha = lambda n: 60./(59+n) # page 837
 
     def program(self, percept):
         s1, r1 = percept
